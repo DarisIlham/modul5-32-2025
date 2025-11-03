@@ -6,6 +6,7 @@ export default function DesktopNavbar({ currentPage, onNavigate, onCreateRecipe 
   const navItems = [
     { id: 'home', label: 'Beranda' },
     { id: 'makanan', label: 'Makanan' },
+    { id: 'favorites', label: 'Favorites' },
     { id: 'minuman', label: 'Minuman' },
     { id: 'profile', label: 'Profile' }
   ];

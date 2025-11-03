@@ -1,11 +1,13 @@
 // src/main.jsx
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter, Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
 import SplashScreen from './pages/SplashScreen';
 import HomePage from './pages/HomePage';
 import MakananPage from './pages/MakananPage';
 import MinumanPage from './pages/MinumanPage';
 import ProfilePage from './pages/ProfilePage';
+import FavoritesPage from './pages/FavoritesPage';
 import CreateRecipePage from './pages/CreateRecipePage';
 import EditRecipePage from './pages/EditRecipePage';
 import RecipeDetail from './components/recipe/RecipeDetail';
@@ -14,110 +16,84 @@ import MobileNavbar from './components/navbar/MobileNavbar';
 import './index.css'
 import PWABadge from './PWABadge';
 
-export function AppRoot() {
+function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [currentPage, setCurrentPage] = useState('home');
-  const [mode, setMode] = useState('list'); // 'list', 'detail', 'create', 'edit'
-  const [selectedRecipeId, setSelectedRecipeId] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState('makanan');
-  const [editingRecipeId, setEditingRecipeId] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isListMode = !location.pathname.includes('/recipe/');
 
   const handleSplashComplete = () => {
     setShowSplash(false);
   };
 
   const handleNavigation = (page) => {
-    setCurrentPage(page);
-    setMode('list');
-    setSelectedRecipeId(null);
-    setEditingRecipeId(null);
+    navigate(`/${page}`);
   };
 
   const handleCreateRecipe = () => {
-    setMode('create');
+    navigate('/create');
   };
 
   const handleRecipeClick = (recipeId, category) => {
-    setSelectedRecipeId(recipeId);
-    setSelectedCategory(category || currentPage);
-    setMode('detail');
+    navigate(`/${category}/recipe/${recipeId}`);
   };
 
   const handleEditRecipe = (recipeId) => {
-    console.log('🔧 Edit button clicked! Recipe ID:', recipeId);
-    setEditingRecipeId(recipeId);
-    setMode('edit');
-    console.log('✅ Mode changed to: edit');
+    navigate(`/edit/${recipeId}`);
   };
 
   const handleBack = () => {
-    setMode('list');
-    setSelectedRecipeId(null);
-    setEditingRecipeId(null);
+    navigate(-1);
   };
 
   const handleCreateSuccess = (newRecipe) => {
     alert('Resep berhasil dibuat!');
-    setMode('list');
-    // Optionally navigate to the new recipe's category
     if (newRecipe && newRecipe.category) {
-      setCurrentPage(newRecipe.category);
+      navigate(`/${newRecipe.category}`);
     }
   };
 
   const handleEditSuccess = () => {
     alert('Resep berhasil diperbarui!');
-    setMode('list');
+    navigate(-1);
   };
 
-  const renderCurrentPage = () => {
-    // Show Create Recipe Page
-    if (mode === 'create') {
-      return (
-        <CreateRecipePage
-          onBack={handleBack}
-          onSuccess={handleCreateSuccess}
-        />
-      );
-    }
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {isListMode && (
+        <>
+          <DesktopNavbar 
+            currentPage={location.pathname.split('/')[1] || 'home'} 
+            onNavigate={handleNavigation}
+            onCreateRecipe={handleCreateRecipe}
+          />
+          <MobileNavbar 
+            currentPage={location.pathname.split('/')[1] || 'home'} 
+            onNavigate={handleNavigation}
+            onCreateRecipe={handleCreateRecipe}
+          />
+        </>
+      )}
+      
+      <main className="min-h-screen">
+        <Routes>
+          <Route path="/" element={<HomePage onRecipeClick={handleRecipeClick} onNavigate={handleNavigation} />} />
+          <Route path="/home" element={<HomePage onRecipeClick={handleRecipeClick} onNavigate={handleNavigation} />} />
+          <Route path="/makanan" element={<MakananPage onRecipeClick={handleRecipeClick} />} />
+          <Route path="/minuman" element={<MinumanPage onRecipeClick={handleRecipeClick} />} />
+          <Route path="/favorites" element={<FavoritesPage onRecipeClick={handleRecipeClick} />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/create" element={<CreateRecipePage onBack={handleBack} onSuccess={handleCreateSuccess} />} />
+          <Route path="/edit/:recipeId" element={<EditRecipePage onBack={handleBack} onSuccess={handleEditSuccess} />} />
+          <Route path="/:category/recipe/:recipeId" element={
+            <RecipeDetailWrapper onBack={handleBack} onEdit={handleEditRecipe} />
+          } />
+        </Routes>
+      </main>
 
-    // Show Edit Recipe Page
-    if (mode === 'edit') {
-      return (
-        <EditRecipePage
-          recipeId={editingRecipeId}
-          onBack={handleBack}
-          onSuccess={handleEditSuccess}
-        />
-      );
-    }
-
-    // Show Recipe Detail
-    if (mode === 'detail') {
-      return (
-        <RecipeDetail
-          recipeId={selectedRecipeId}
-          category={selectedCategory}
-          onBack={handleBack}
-          onEdit={handleEditRecipe}
-        />
-      );
-    }
-
-    // Show List Pages
-    switch (currentPage) {
-      case 'home':
-        return <HomePage onRecipeClick={handleRecipeClick} onNavigate={handleNavigation} />;
-      case 'makanan':
-        return <MakananPage onRecipeClick={handleRecipeClick} />;
-      case 'minuman':
-        return <MinumanPage onRecipeClick={handleRecipeClick} />;
-      case 'profile':
-        return <ProfilePage onRecipeClick={handleRecipeClick} />;
-      default:
-        return <HomePage onRecipeClick={handleRecipeClick} onNavigate={handleNavigation} />;
-    }
-  };
+      <PWABadge />
+    </div>
+  );
 
   if (showSplash) {
     return <SplashScreen onComplete={handleSplashComplete} />;
@@ -125,25 +101,35 @@ export function AppRoot() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Only show navbar in list mode */}
-      {mode === 'list' && (
+      {isListMode && (
         <>
           <DesktopNavbar 
-            currentPage={currentPage} 
+            currentPage={location.pathname.split('/')[1] || 'home'} 
             onNavigate={handleNavigation}
             onCreateRecipe={handleCreateRecipe}
           />
           <MobileNavbar 
-            currentPage={currentPage} 
+            currentPage={location.pathname.split('/')[1] || 'home'} 
             onNavigate={handleNavigation}
             onCreateRecipe={handleCreateRecipe}
           />
         </>
       )}
       
-      {/* Main Content */}
       <main className="min-h-screen">
-        {renderCurrentPage()}
+        <Routes>
+          <Route path="/" element={<HomePage onRecipeClick={handleRecipeClick} onNavigate={handleNavigation} />} />
+          <Route path="/home" element={<HomePage onRecipeClick={handleRecipeClick} onNavigate={handleNavigation} />} />
+          <Route path="/makanan" element={<MakananPage onRecipeClick={handleRecipeClick} />} />
+          <Route path="/minuman" element={<MinumanPage onRecipeClick={handleRecipeClick} />} />
+          <Route path="/favorites" element={<FavoritesPage onRecipeClick={handleRecipeClick} />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/create" element={<CreateRecipePage onBack={handleBack} onSuccess={handleCreateSuccess} />} />
+          <Route path="/edit/:recipeId" element={<EditRecipePage onBack={handleBack} onSuccess={handleEditSuccess} />} />
+          <Route path="/:category/recipe/:recipeId" element={
+            <RecipeDetailWrapper onBack={handleBack} onEdit={handleEditRecipe} />
+          } />
+        </Routes>
       </main>
 
       <PWABadge />
@@ -151,9 +137,24 @@ export function AppRoot() {
   );
 }
 
+// Wrapper component to handle URL parameters for RecipeDetail
+function RecipeDetailWrapper({ onBack, onEdit }) {
+  const { category, recipeId } = useParams();
+  return (
+    <RecipeDetail
+      recipeId={recipeId}
+      category={category}
+      onBack={onBack}
+      onEdit={onEdit}
+    />
+  );
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AppRoot />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </StrictMode>,
 )
 

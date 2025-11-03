@@ -95,23 +95,53 @@ export function useToggleFavorite() {
  * @param {string} recipeId - Recipe ID
  * @returns {Object} - { isFavorited, loading, toggleFavorite }
  */
-export function useIsFavorited(recipeId) {
-  const { favorites, loading: fetchLoading, refetch } = useFavorites();
-  const { toggleFavorite: toggle, loading: toggleLoading } = useToggleFavorite();
-  
-  const isFavorited = favorites.some(fav => fav.id === recipeId);
+export function useIsFavorited(recipeId, category) {
+  // LocalStorage-backed favoriting to support offline/demo mode and
+  // avoid dependence on the backend for favorites UI.
+  const [isFavorited, setIsFavorited] = useState(false);
+
+  useEffect(() => {
+    if (!recipeId) {
+      setIsFavorited(false);
+      return;
+    }
+
+    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    if (category) {
+      setIsFavorited(favorites.includes(`${category}-${recipeId}`));
+    } else {
+      // If category not provided, check any favorite that ends with -{id}
+      setIsFavorited(favorites.some(f => f.endsWith(`-${recipeId}`)));
+    }
+  }, [recipeId, category]);
 
   const toggleFavorite = async () => {
-    const result = await toggle(recipeId);
-    if (result) {
-      await refetch();
+    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    let key = category ? `${category}-${recipeId}` : null;
+
+    if (!key) {
+      // If no explicit category, try to find an existing saved favorite for this id
+      const found = favorites.find(f => f.endsWith(`-${recipeId}`));
+      key = found || `makanan-${recipeId}`; // default to makanan if nothing found
     }
-    return result;
+
+    const idx = favorites.indexOf(key);
+    if (idx > -1) {
+      favorites.splice(idx, 1);
+      localStorage.setItem('favorites', JSON.stringify(favorites));
+      setIsFavorited(false);
+      return { removed: true };
+    } else {
+      favorites.push(key);
+      localStorage.setItem('favorites', JSON.stringify(favorites));
+      setIsFavorited(true);
+      return { added: true };
+    }
   };
 
   return {
     isFavorited,
-    loading: fetchLoading || toggleLoading,
+    loading: false,
     toggleFavorite,
   };
 }

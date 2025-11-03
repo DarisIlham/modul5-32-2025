@@ -5,17 +5,19 @@ import { useReviews, useCreateReview } from '../../hooks/useReviews';
 import { useIsFavorited } from '../../hooks/useFavorites';
 import { getUserIdentifier } from '../../hooks/useFavorites';
 import { formatDate, getDifficultyColor, getStarRating } from '../../utils/helpers';
-import { ArrowLeft, Heart, Clock, Users, ChefHat, Star, Send, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Heart, Clock, Users, ChefHat, Star, Send, Edit, Trash2, Share2 } from 'lucide-react';
+import { shareRecipe } from '../../utils/shareUtils';
 import recipeService from '../../services/recipeService';
 import ConfirmModal from '../modals/ConfirmModal';
 import FavoriteButton from '../common/FavoriteButton';
+import CachedImage from '../common/CachedImage';
 import userService from '../../services/userService';
 
 export default function RecipeDetail({ recipeId, onBack, onEdit, category = 'makanan' }) {
   const { recipe, loading: recipeLoading, error: recipeError } = useRecipe(recipeId);
   const { reviews, loading: reviewsLoading, refetch: refetchReviews } = useReviews(recipeId);
   const { createReview, loading: createLoading } = useCreateReview();
-  const { isFavorited, loading: favLoading, toggleFavorite } = useIsFavorited(recipeId);
+  const { isFavorited, loading: favLoading, toggleFavorite } = useIsFavorited(recipeId, category);
 
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -198,7 +200,7 @@ export default function RecipeDetail({ recipeId, onBack, onEdit, category = 'mak
         <div className="bg-white/60 backdrop-blur-sm rounded-3xl overflow-hidden shadow-xl border border-white/40 mb-8">
           {/* Hero Image */}
           <div className="relative h-64 md:h-96 overflow-hidden">
-            <img
+            <CachedImage
               src={recipe.image_url}
               alt={recipe.name}
               className="w-full h-full object-cover"
@@ -207,14 +209,24 @@ export default function RecipeDetail({ recipeId, onBack, onEdit, category = 'mak
             
             {/* Favorite Button - Use component */}
             <div className="absolute top-4 right-4 z-10">
-              <FavoriteButton recipeId={recipeId} size="lg" />
+              <FavoriteButton recipeId={recipeId} category={category} recipe={recipe} size="lg" />
             </div>
 
-            {/* Category Badge */}
-            <div className="absolute bottom-4 left-4">
+              {/* Category Badge and Share Button */}
+            <div className="absolute bottom-4 flex justify-between w-full px-4">
               <span className={`${colors.text} ${colors.bg} px-4 py-2 rounded-full text-sm font-semibold`}>
                 {category === 'makanan' ? 'Makanan' : 'Minuman'}
               </span>
+              <button
+                onClick={async () => {
+                  const result = await shareRecipe(recipe, category);
+                  alert(result.message);
+                }}
+                className="bg-white/90 text-slate-700 px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 hover:bg-white transition-colors"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Bagikan</span>
+              </button>
             </div>
           </div>
 

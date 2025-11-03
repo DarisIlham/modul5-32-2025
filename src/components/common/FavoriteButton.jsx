@@ -6,7 +6,7 @@ import { Heart } from 'lucide-react';
  * FavoriteButton Component
  * Toggles favorite status with localStorage support
  */
-export default function FavoriteButton({ recipeId, onToggle, showCount = false, initialCount = 0, size = 'md' }) {
+export default function FavoriteButton({ recipeId, category = 'makanan', recipe = null, onToggle, showCount = false, initialCount = 0, size = 'md' }) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteCount, setFavoriteCount] = useState(initialCount);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -24,11 +24,14 @@ export default function FavoriteButton({ recipeId, onToggle, showCount = false, 
     lg: 'w-6 h-6'
   };
 
+  // Use composite key to avoid id collisions between makanan/minuman
+  const compositeKey = `${category}-${recipeId}`;
+
   // Check if recipe is favorited on mount
   useEffect(() => {
     const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-    setIsFavorited(favorites.includes(recipeId));
-  }, [recipeId]);
+    setIsFavorited(favorites.includes(compositeKey));
+  }, [compositeKey]);
 
   const handleToggle = async (e) => {
     e.stopPropagation(); // Prevent card click
@@ -36,29 +39,44 @@ export default function FavoriteButton({ recipeId, onToggle, showCount = false, 
     setIsAnimating(true);
     setTimeout(() => setIsAnimating(false), 300);
 
-    // Toggle in localStorage
+    // Toggle in localStorage using composite key
     const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-    const index = favorites.indexOf(recipeId);
-    
+    const index = favorites.indexOf(compositeKey);
+
     let newFavoritedState;
+    const favoritesData = JSON.parse(localStorage.getItem('favoritesData') || '{}');
+
     if (index > -1) {
       // Remove from favorites
       favorites.splice(index, 1);
+      // remove metadata
+      delete favoritesData[compositeKey];
       newFavoritedState = false;
       setFavoriteCount(prev => Math.max(0, prev - 1));
     } else {
       // Add to favorites
-      favorites.push(recipeId);
+      favorites.push(compositeKey);
+      // store minimal metadata if provided
+      if (recipe) {
+        favoritesData[compositeKey] = {
+          id: recipeId,
+          category,
+          name: recipe.name || recipe.title || '',
+          image_url: recipe.image_url || recipe.image || ''
+        };
+      }
       newFavoritedState = true;
       setFavoriteCount(prev => prev + 1);
     }
-    
+
     localStorage.setItem('favorites', JSON.stringify(favorites));
+    localStorage.setItem('favoritesData', JSON.stringify(favoritesData));
     setIsFavorited(newFavoritedState);
 
     // Call parent callback if provided
     if (onToggle) {
-      onToggle(recipeId, newFavoritedState);
+      // Provide both id and category in callback
+      onToggle(recipeId, category, newFavoritedState);
     }
   };
 
